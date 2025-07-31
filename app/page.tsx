@@ -9,6 +9,7 @@ import { LotteryFactoryAbi, LOTTERY_FACTORY_ADDRESS } from "./lib/LotteryFactory
 import { LotteryAbi, LotteryMode, LotteryStatus, getModeName, getStatusName } from "./lib/Lottery";
 import { LEITokenAbi, leiTokenContract } from "./lib/LEIToken";
 import Link from "next/link";
+import { TokenManager } from "./components/TokenManager";
 
 function CreateLotteryModal({ isOpen, onClose, onSuccess }: { isOpen: boolean; onClose: () => void; onSuccess: () => void }) {
   const { address } = useAccount();
@@ -81,82 +82,82 @@ function CreateLotteryModal({ isOpen, onClose, onSuccess }: { isOpen: boolean; o
 
   return (
     <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
-      <div className="bg-white rounded-lg p-8 max-w-md w-full mx-4">
-        <h2 className="text-2xl font-bold mb-6">Create New Lottery</h2>
+      <div className="bg-white dark:bg-gray-800 rounded-lg p-8 max-w-md w-full mx-4">
+        <h2 className="text-2xl font-bold mb-6 text-gray-900 dark:text-white">Create New Lottery</h2>
         
         <div className="space-y-4">
           <div>
-            <label className="block text-sm font-medium mb-2">
+            <label className="block text-sm font-medium mb-2 text-gray-700 dark:text-gray-300">
               Initial Stake (LEI)
             </label>
             <input
               type="number"
               value={initialStake}
               onChange={(e) => setInitialStake(e.target.value)}
-              className="w-full px-3 py-2 border rounded-lg"
+              className="w-full px-3 py-2 border dark:border-gray-600 dark:bg-gray-700 dark:text-white rounded-lg"
               min="100"
               step="0.01"
               placeholder="100.00"
             />
-            <p className="text-xs text-gray-500 mt-1">
+            <p className="text-xs text-gray-500 dark:text-gray-400 mt-1">
               Minimum: 100 LEI (uses 18 decimal places like ETH)
             </p>
           </div>
 
           <div>
-            <label className="block text-sm font-medium mb-2">
+            <label className="block text-sm font-medium mb-2 text-gray-700 dark:text-gray-300">
               Ticket Price (LEI)
             </label>
             <input
               type="number"
               value={ticketPrice}
               onChange={(e) => setTicketPrice(e.target.value)}
-              className="w-full px-3 py-2 border rounded-lg"
+              className="w-full px-3 py-2 border dark:border-gray-600 dark:bg-gray-700 dark:text-white rounded-lg"
               min="0.01"
               step="0.01"
               placeholder="5.00"
             />
-            <p className="text-xs text-gray-500 mt-1">
+            <p className="text-xs text-gray-500 dark:text-gray-400 mt-1">
               Price per ticket (can use decimals like 5.50)
             </p>
           </div>
 
           {/* LEI Token Info */}
-          <div className="bg-blue-50 p-3 rounded-lg">
-            <h4 className="text-sm font-medium text-blue-800 mb-1">💡 LEI Token Info</h4>
-            <p className="text-xs text-blue-700">
+          <div className="bg-blue-50 dark:bg-blue-900/20 p-3 rounded-lg">
+            <h4 className="text-sm font-medium text-blue-800 dark:text-blue-300 mb-1">💡 LEI Token Info</h4>
+            <p className="text-xs text-blue-700 dark:text-blue-400">
               LEI uses 18 decimal places (like ETH). When you enter "100", the contract receives 100,000,000,000,000,000,000 wei.
               This allows for precise fractional amounts like 5.50 or 0.01 LEI.
             </p>
           </div>
 
           <div>
-            <label className="block text-sm font-medium mb-2">Draw Date</label>
+            <label className="block text-sm font-medium mb-2 text-gray-700 dark:text-gray-300">Draw Date</label>
             <input
               type="date"
               value={drawDate}
               onChange={(e) => setDrawDate(e.target.value)}
-              className="w-full px-3 py-2 border rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
+              className="w-full px-3 py-2 border dark:border-gray-600 dark:bg-gray-700 dark:text-white rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
               min={today}
             />
           </div>
 
           <div>
-            <label className="block text-sm font-medium mb-2">Draw Time</label>
+            <label className="block text-sm font-medium mb-2 text-gray-700 dark:text-gray-300">Draw Time</label>
             <input
               type="time"
               value={drawTime}
               onChange={(e) => setDrawTime(e.target.value)}
-              className="w-full px-3 py-2 border rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
+              className="w-full px-3 py-2 border dark:border-gray-600 dark:bg-gray-700 dark:text-white rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
             />
           </div>
 
           <div>
-            <label className="block text-sm font-medium mb-2">Lottery Mode</label>
+            <label className="block text-sm font-medium mb-2 text-gray-700 dark:text-gray-300">Lottery Mode</label>
             <select
               value={mode}
               onChange={(e) => setMode(Number(e.target.value))}
-              className="w-full px-3 py-2 border rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
+              className="w-full px-3 py-2 border dark:border-gray-600 dark:bg-gray-700 dark:text-white rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
             >
               <option value={LotteryMode.TeamBased}>Team-Based (50% winner, 50% team)</option>
               <option value={LotteryMode.LastMinter}>Last Minter (5 min timer)</option>
@@ -168,7 +169,7 @@ function CreateLotteryModal({ isOpen, onClose, onSuccess }: { isOpen: boolean; o
         <div className="mt-6 flex gap-3">
           <button
             onClick={onClose}
-            className="flex-1 px-4 py-2 border border-gray-300 rounded-lg hover:bg-gray-50 transition-colors"
+            className="flex-1 px-4 py-2 border border-gray-300 dark:border-gray-600 rounded-lg hover:bg-gray-50 dark:hover:bg-gray-700 transition-colors text-gray-700 dark:text-gray-300"
             disabled={isApprovePending || isCreatePending}
           >
             Cancel
@@ -176,7 +177,7 @@ function CreateLotteryModal({ isOpen, onClose, onSuccess }: { isOpen: boolean; o
           <button
             onClick={handleCreate}
             disabled={!address || !drawDate || !drawTime || isApprovePending || isCreatePending}
-            className="flex-1 px-4 py-2 bg-blue-500 text-white rounded-lg hover:bg-blue-600 disabled:bg-gray-300 disabled:cursor-not-allowed transition-colors"
+            className="flex-1 px-4 py-2 bg-blue-500 text-white rounded-lg hover:bg-blue-600 disabled:bg-gray-300 dark:disabled:bg-gray-600 disabled:cursor-not-allowed transition-colors"
           >
             {isApprovePending ? 'Approving...' : isCreatePending ? 'Creating...' : 'Create Lottery'}
           </button>
@@ -283,27 +284,15 @@ function LotteryCard({ address }: { address: string }) {
 
   return (
     <Link href={`/lottery/${address}`}>
-      <div className={`border rounded-lg p-6 hover:shadow-lg transition-all cursor-pointer relative ${
+      <div className={`border rounded-lg p-6 hover:shadow-lg transition-all cursor-pointer ${
         isPast ? 'bg-gray-50 border-gray-200' : 'bg-white border-gray-300'
-      } ${isReadyToDraw ? 'ring-2 ring-orange-400 ring-opacity-75' : ''}`}>
-        
-        {/* Ready to Draw Notification Badge */}
-        {isReadyToDraw && (
-          <div className="absolute -top-2 -right-2 z-10">
-            <div className="bg-orange-500 text-white px-3 py-1 rounded-full text-xs font-bold flex items-center shadow-lg animate-pulse">
-              <span className="w-2 h-2 bg-white rounded-full mr-2 animate-ping"></span>
-              READY TO DRAW!
-            </div>
-          </div>
-        )}
-
+      }`}>
         <div className="flex justify-between items-start mb-4">
           <div>
-            <h3 className="text-lg font-semibold">{getModeName(mode)}</h3>
-            <p className="text-sm text-gray-500">by {creator.slice(0, 6)}...{creator.slice(-4)}</p>
+            <h3 className="text-lg font-semibold text-gray-900 dark:text-white">{getModeName(mode)}</h3>
+            <p className="text-sm text-gray-500 dark:text-gray-400">by {creator.slice(0, 6)}...{creator.slice(-4)}</p>
           </div>
           <span className={`px-3 py-1 rounded-full text-sm font-medium ${
-            isReadyToDraw ? 'bg-orange-100 text-orange-800' :
             isActive ? 'bg-green-100 text-green-800' : 
             status === LotteryStatus.Closed ? 'bg-yellow-100 text-yellow-800' :
             status === LotteryStatus.PaidOut ? 'bg-purple-100 text-purple-800' :
@@ -315,22 +304,22 @@ function LotteryCard({ address }: { address: string }) {
 
         <div className="space-y-2">
           <div className="flex justify-between">
-            <span className="text-gray-600">Prize Pool:</span>
-            <span className="font-semibold">{formatEther(totalPot)} LEI</span>
+            <span className="text-gray-600 dark:text-gray-400">Prize Pool:</span>
+            <span className="font-semibold text-gray-900 dark:text-white">{formatEther(totalPot)} LEI</span>
           </div>
           <div className="flex justify-between">
-            <span className="text-gray-600">Ticket Price:</span>
-            <span>{formatEther(ticketPrice)} LEI</span>
+            <span className="text-gray-600 dark:text-gray-400">Ticket Price:</span>
+            <span className="text-gray-900 dark:text-white">{formatEther(ticketPrice)} LEI</span>
           </div>
           <div className="flex justify-between">
-            <span className="text-gray-600">Players:</span>
-            <span>{playerCount.toString()}</span>
+            <span className="text-gray-600 dark:text-gray-400">Players:</span>
+            <span className="text-gray-900 dark:text-white">{playerCount.toString()}</span>
           </div>
           <div className="flex justify-between">
-            <span className="text-gray-600">
+            <span className="text-gray-600 dark:text-gray-400">
               {isActive ? 'Time Left:' : 'Draw Time:'}
             </span>
-            <span className={isActive ? 'text-blue-600 font-medium' : 'text-gray-500'}>
+            <span className={isActive ? 'text-blue-600 dark:text-blue-400 font-medium' : 'text-gray-500 dark:text-gray-400'}>
               {isActive && timeLeft > 0 
                 ? `${Math.floor(timeLeft / 3600)}h ${Math.floor((timeLeft % 3600) / 60)}m`
                 : new Date(Number(drawTimestamp) * 1000).toLocaleDateString()
@@ -419,7 +408,21 @@ export default function HomePage() {
   const { address, isConnected, chain } = useAccount();
   const [showCreateModal, setShowCreateModal] = useState(false);
   const [filterStatus, setFilterStatus] = useState<'all' | 'active' | 'past'>('active');
+  const [mounted, setMounted] = useState(false);
+  const [activeTab, setActiveTab] = useState<'lotteries' | 'tokens'>('lotteries');
   const [readyLotteries, setReadyLotteries] = useState<string[]>([]);
+
+  useEffect(() => {
+    setMounted(true);
+  }, []);
+
+  // Get LEI balance
+  const { data: leiBalance } = useReadContract({
+    address: leiTokenContract,
+    abi: LEITokenAbi,
+    functionName: 'balanceOf',
+    args: address ? [address] : undefined,
+  });
 
   const { data: allLotteries, isLoading, refetch } = useReadContract({
     address: LOTTERY_FACTORY_ADDRESS,
@@ -476,41 +479,78 @@ export default function HomePage() {
   const readyAddresses = readyLotteries;
 
   return (
-    <div className="min-h-screen bg-gray-50">
+    <div className="min-h-screen bg-gray-50 dark:bg-gray-900">
       {/* Header */}
-      <header className="bg-white border-b">
+      <header className="bg-white dark:bg-gray-800 border-b dark:border-gray-700">
         <div className="max-w-7xl mx-auto px-4 py-4 flex justify-between items-center">
-          <h1 className="text-2xl font-bold text-gray-900">LEI Lottery Hub</h1>
-          <Wallet>
-            <ConnectWallet>
-              <Avatar className="h-6 w-6" />
-              <Name />
-            </ConnectWallet>
-            <WalletDropdown>
-              <Identity className="px-4 pt-3 pb-2" hasCopyAddressOnClick>
-                <Avatar />
+          <h1 className="text-2xl font-bold text-gray-900 dark:text-white">LEI Lottery Hub</h1>
+          <div className="flex items-center gap-4">
+            {mounted && isConnected && leiBalance !== undefined && (
+              <div className="bg-gray-100 dark:bg-gray-700 px-4 py-2 rounded-lg">
+                <span className="text-sm text-gray-600 dark:text-gray-400">LEI Balance: </span>
+                <span className="font-semibold text-gray-900 dark:text-white">{formatEther(leiBalance)} LEI</span>
+              </div>
+            )}
+            <Wallet>
+              <ConnectWallet>
+                <Avatar className="h-6 w-6" />
                 <Name />
-                <Address />
-                <EthBalance />
-              </Identity>
-              <WalletDropdownDisconnect />
-            </WalletDropdown>
-          </Wallet>
+              </ConnectWallet>
+              <WalletDropdown>
+                <Identity className="px-4 pt-3 pb-2" hasCopyAddressOnClick>
+                  <Avatar />
+                  <Name />
+                  <Address />
+                  <EthBalance />
+                </Identity>
+                <WalletDropdownDisconnect />
+              </WalletDropdown>
+            </Wallet>
+          </div>
         </div>
       </header>
 
       {/* Main Content */}
       <main className="max-w-7xl mx-auto px-4 py-8">
-        {/* Header Section */}
-        <div className="mb-8">
+        {/* Tab Navigation */}
+        <div className="flex gap-1 mb-8 border-b dark:border-gray-700">
+          <button
+            onClick={() => setActiveTab('lotteries')}
+            className={`px-6 py-3 font-medium transition-colors ${
+              activeTab === 'lotteries'
+                ? 'text-blue-600 dark:text-blue-400 border-b-2 border-blue-600 dark:border-blue-400'
+                : 'text-gray-600 dark:text-gray-400 hover:text-gray-900 dark:hover:text-gray-100'
+            }`}
+          >
+            Lotteries
+          </button>
+          <button
+            onClick={() => setActiveTab('tokens')}
+            className={`px-6 py-3 font-medium transition-colors ${
+              activeTab === 'tokens'
+                ? 'text-blue-600 dark:text-blue-400 border-b-2 border-blue-600 dark:border-blue-400'
+                : 'text-gray-600 dark:text-gray-400 hover:text-gray-900 dark:hover:text-gray-100'
+            }`}
+          >
+            Token Manager
+          </button>
+        </div>
+
+        {/* Tab Content */}
+        {activeTab === 'tokens' ? (
+          <TokenManager />
+        ) : (
+          <>
+            {/* Header Section */}
+            <div className="mb-8">
           <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4 mb-6">
             <div>
-              <h2 className="text-3xl font-bold text-gray-900">Lotteries</h2>
-              <p className="text-gray-600 mt-1">
+              <h2 className="text-3xl font-bold text-gray-900 dark:text-white">Lotteries</h2>
+              <p className="text-gray-600 dark:text-gray-400 mt-1">
                 {allKnownLotteries ? `${allKnownLotteries.length} total lotteries` : 'Loading...'}
               </p>
             </div>
-            {isConnected && (
+            {mounted && isConnected && (
               <button
                 onClick={() => setShowCreateModal(true)}
                 className="px-6 py-3 bg-blue-500 text-white rounded-lg hover:bg-blue-600 transition-colors font-medium"
@@ -520,58 +560,58 @@ export default function HomePage() {
             )}
           </div>
 
-          {/* Filter Tabs */}
-          <div className="flex gap-2 border-b">
-            <button
-              onClick={() => setFilterStatus('all')}
-              className={`px-4 py-2 font-medium transition-colors ${
-                filterStatus === 'all' 
-                  ? 'text-blue-600 border-b-2 border-blue-600' 
-                  : 'text-gray-600 hover:text-gray-900'
-              }`}
-            >
-              All Lotteries
-            </button>
-            <button
-              onClick={() => setFilterStatus('active')}
-              className={`px-4 py-2 font-medium transition-colors ${
-                filterStatus === 'active' 
-                  ? 'text-blue-600 border-b-2 border-blue-600' 
-                  : 'text-gray-600 hover:text-gray-900'
-              }`}
-            >
-              Active
-            </button>
-            <button
-              onClick={() => setFilterStatus('past')}
-              className={`px-4 py-2 font-medium transition-colors ${
-                filterStatus === 'past' 
-                  ? 'text-blue-600 border-b-2 border-blue-600' 
-                  : 'text-gray-600 hover:text-gray-900'
-              }`}
-            >
-              Past
-            </button>
-          </div>
+                      {/* Filter Tabs */}
+            <div className="flex gap-2 border-b dark:border-gray-700">
+              <button
+                onClick={() => setFilterStatus('all')}
+                className={`px-4 py-2 font-medium transition-colors ${
+                  filterStatus === 'all' 
+                    ? 'text-blue-600 dark:text-blue-400 border-b-2 border-blue-600 dark:border-blue-400' 
+                    : 'text-gray-600 dark:text-gray-400 hover:text-gray-900 dark:hover:text-gray-100'
+                }`}
+              >
+                All Lotteries
+              </button>
+              <button
+                onClick={() => setFilterStatus('active')}
+                className={`px-4 py-2 font-medium transition-colors ${
+                  filterStatus === 'active' 
+                    ? 'text-blue-600 dark:text-blue-400 border-b-2 border-blue-600 dark:border-blue-400' 
+                    : 'text-gray-600 dark:text-gray-400 hover:text-gray-900 dark:hover:text-gray-100'
+                }`}
+              >
+                Active
+              </button>
+              <button
+                onClick={() => setFilterStatus('past')}
+                className={`px-4 py-2 font-medium transition-colors ${
+                  filterStatus === 'past' 
+                    ? 'text-blue-600 dark:text-blue-400 border-b-2 border-blue-600 dark:border-blue-400' 
+                    : 'text-gray-600 dark:text-gray-400 hover:text-gray-900 dark:hover:text-gray-100'
+                }`}
+              >
+                Past
+              </button>
+            </div>
         </div>
 
         {/* Ready to Draw Notification */}
         <ReadyToDrawNotification readyCount={readyCount} readyAddresses={readyAddresses} />
 
-        {/* Lottery Grid */}
-        {isLoading ? (
-          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-            {[...Array(6)].map((_, i) => (
-              <div key={i} className="border border-gray-200 rounded-lg p-6 animate-pulse">
-                <div className="h-6 bg-gray-200 rounded w-3/4 mb-4"></div>
-                <div className="space-y-3">
-                  <div className="h-4 bg-gray-200 rounded"></div>
-                  <div className="h-4 bg-gray-200 rounded"></div>
-                  <div className="h-4 bg-gray-200 rounded"></div>
+                  {/* Lottery Grid */}
+          {isLoading ? (
+            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+              {[...Array(6)].map((_, i) => (
+                <div key={i} className="border border-gray-200 dark:border-gray-700 rounded-lg p-6 animate-pulse">
+                  <div className="h-6 bg-gray-200 dark:bg-gray-700 rounded w-3/4 mb-4"></div>
+                  <div className="space-y-3">
+                    <div className="h-4 bg-gray-200 dark:bg-gray-700 rounded"></div>
+                    <div className="h-4 bg-gray-200 dark:bg-gray-700 rounded"></div>
+                    <div className="h-4 bg-gray-200 dark:bg-gray-700 rounded"></div>
+                  </div>
                 </div>
-              </div>
-            ))}
-          </div>
+              ))}
+            </div>
         ) : displayedLotteries && displayedLotteries.length > 0 ? (
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
             {[...displayedLotteries].reverse().map((lotteryAddress) => (
@@ -584,24 +624,30 @@ export default function HomePage() {
               </div>
             ))}
           </div>
-        ) : (
-          <div className="text-center py-12">
-            <div className="inline-flex items-center justify-center w-16 h-16 bg-gray-100 rounded-full mb-4">
-              <svg className="w-8 h-8 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 6v6m0 0v6m0-6h6m-6 0H6" />
-              </svg>
+                  ) : (
+            <div className="text-center py-12">
+              <div className="inline-flex items-center justify-center w-16 h-16 bg-gray-100 dark:bg-gray-800 rounded-full mb-4">
+                <svg className="w-8 h-8 text-gray-400 dark:text-gray-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 6v6m0 0v6m0-6h6m-6 0H6" />
+                </svg>
+              </div>
+              <p className="text-xl text-gray-600 dark:text-gray-400 mb-2">
+                {filterStatus === 'active' ? 'No active lotteries' : 
+                 filterStatus === 'past' ? 'No past lotteries' : 
+                 'No lotteries created yet'}
+              </p>
+              {mounted ? (
+                isConnected ? (
+                  <p className="text-gray-500 dark:text-gray-400">Be the first to create a lottery!</p>
+                ) : (
+                  <p className="text-gray-500 dark:text-gray-400">Connect your wallet to create a lottery</p>
+                )
+              ) : (
+                <p className="text-gray-500 dark:text-gray-400">Loading...</p>
+              )}
             </div>
-            <p className="text-xl text-gray-600 mb-2">
-              {filterStatus === 'active' ? 'No active lotteries' : 
-               filterStatus === 'past' ? 'No past lotteries' : 
-               'No lotteries created yet'}
-            </p>
-            {isConnected ? (
-              <p className="text-gray-500">Be the first to create a lottery!</p>
-            ) : (
-              <p className="text-gray-500">Connect your wallet to create a lottery</p>
-            )}
-          </div>
+        )}
+          </>
         )}
       </main>
 

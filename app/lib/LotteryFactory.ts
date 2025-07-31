@@ -1,4 +1,4 @@
-export const LOTTERY_FACTORY_ADDRESS = '0x807CA87Bd6128e2f9DFfD8B2BC621Fa0Fb33DBC6' as const;
+export const LOTTERY_FACTORY_ADDRESS = '0xd1Ba7494DE53974F8DdAaBeD2af7613e77c20edb' as const;
 
 export const LotteryFactoryAbi = [
   {

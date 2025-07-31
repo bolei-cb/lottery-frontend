@@ -97,6 +97,14 @@ export default function LotteryDetailPage() {
     functionName: 'lastEntryTimestamp',
   });
 
+  // Read token allowance
+  const { data: tokenAllowance } = useReadContract({
+    address: leiTokenContract,
+    abi: LEITokenAbi,
+    functionName: 'allowance',
+    args: userAddress ? [userAddress, lotteryAddress as `0x${string}`] : undefined,
+  });
+
   // Write functions
   const { writeContract: approve, data: approveHash } = useWriteContract();
   const { writeContract: buyTickets, data: buyHash } = useWriteContract();
@@ -172,17 +180,40 @@ export default function LotteryDetailPage() {
       const totalCost = BigInt(ticketCount) * ticketPrice;
       
       console.log('Buying tickets on chain:', chain?.name);
-      // First approve
-      setIsApproving(true);
-      await approve({
-        address: leiTokenContract,
-        abi: LEITokenAbi,
-        functionName: 'approve',
-        args: [lotteryAddress as `0x${string}`, totalCost],
-        chainId: baseSepolia.id, // Explicitly specify chain
-      });
+      
+      // Check if we need to approve
+      if (!tokenAllowance || tokenAllowance < totalCost) {
+        // First approve
+        setIsApproving(true);
+        await approve({
+          address: leiTokenContract,
+          abi: LEITokenAbi,
+          functionName: 'approve',
+          args: [lotteryAddress as `0x${string}`, totalCost],
+          chainId: baseSepolia.id, // Explicitly specify chain
+        });
+      } else {
+        // We have enough allowance, buy directly
+        if (mode === LotteryMode.TeamBased) {
+          await buyTickets({
+            address: lotteryAddress as `0x${string}`,
+            abi: LotteryAbi,
+            functionName: 'buyTicketsForTeam',
+            args: [BigInt(ticketCount), BigInt(teamId)],
+            chainId: baseSepolia.id,
+          });
+        } else {
+          await buyTickets({
+            address: lotteryAddress as `0x${string}`,
+            abi: LotteryAbi,
+            functionName: 'buyTickets',
+            args: [BigInt(ticketCount)],
+            chainId: baseSepolia.id,
+          });
+        }
+      }
     } catch (error) {
-      console.error('Approval error:', error);
+      console.error('Buy tickets error:', error);
       setIsApproving(false);
     }
   };
@@ -388,6 +419,25 @@ export default function LotteryDetailPage() {
                     <p className="text-xs text-gray-500 mb-1">
                       Wei amount: {(BigInt(ticketCount || 0) * ticketPrice).toString()}
                     </p>
+                    
+                    {/* Allowance Status */}
+                    <div className="text-xs mb-3 p-2 bg-gray-50 rounded">
+                      <p className="text-gray-600">
+                        Current Allowance: {tokenAllowance ? formatLEI(tokenAllowance) : '0'} LEI
+                      </p>
+                      {ticketCount && Number(ticketCount) > 0 && (
+                        <p className={`mt-1 ${
+                          tokenAllowance && tokenAllowance >= BigInt(ticketCount) * ticketPrice 
+                            ? 'text-green-600' 
+                            : 'text-orange-600'
+                        }`}>
+                          {tokenAllowance && tokenAllowance >= BigInt(ticketCount) * ticketPrice
+                            ? '✓ Sufficient allowance'
+                            : '⚠ Approval needed'}
+                        </p>
+                      )}
+                    </div>
+                    
                     <p className="text-xs text-gray-500 mb-3">
                       LEI uses 18 decimals like ETH. Precise amounts supported (e.g., 5.50 LEI).
                     </p>
@@ -396,7 +446,10 @@ export default function LotteryDetailPage() {
                       disabled={!ticketCount || isApprovePending || isBuyPending}
                       className="w-full px-4 py-2 bg-blue-500 text-white rounded-lg hover:bg-blue-600 disabled:bg-gray-300"
                     >
-                      {isApprovePending ? 'Approving...' : isBuyPending ? 'Buying...' : 'Buy Tickets'}
+                      {isApprovePending ? 'Approving...' : 
+                       isBuyPending ? 'Buying...' : 
+                       (tokenAllowance && tokenAllowance >= BigInt(ticketCount || 0) * ticketPrice) ? 'Buy Tickets' : 
+                       'Approve & Buy Tickets'}
                     </button>
                   </div>
                 </div>
