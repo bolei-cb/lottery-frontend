@@ -224,7 +224,24 @@ export default function LotteryDetailPage() {
       {/* Header */}
       <div className="bg-white border-b">
         <div className="max-w-4xl mx-auto px-4 py-4 flex justify-between items-center">
-          <h1 className="text-2xl font-bold">Lottery Details</h1>
+          <div className="flex items-center gap-4">
+            <Link 
+              href="/" 
+              className="flex items-center gap-2 px-3 py-2 text-gray-600 hover:text-gray-900 hover:bg-gray-100 rounded-lg transition-colors"
+            >
+              <svg 
+                className="w-5 h-5" 
+                fill="none" 
+                stroke="currentColor" 
+                viewBox="0 0 24 24" 
+                xmlns="http://www.w3.org/2000/svg"
+              >
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 19l-7-7 7-7" />
+              </svg>
+              Back to Home
+            </Link>
+            <h1 className="text-2xl font-bold">Lottery Details</h1>
+          </div>
           <Wallet>
             <ConnectWallet>
               <Avatar className="h-6 w-6" />
