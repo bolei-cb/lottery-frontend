@@ -279,24 +279,37 @@ function LotteryCard({ address }: { address: string }) {
   const timeLeft = Number(drawTimestamp) - now;
   const isActive = status === LotteryStatus.Open && timeLeft > 0;
   const isPast = status !== LotteryStatus.Open || timeLeft <= 0;
+  const isReadyToDraw = status === LotteryStatus.Open && timeLeft <= 0; // New: detect ready to draw
 
   return (
     <Link href={`/lottery/${address}`}>
-      <div className={`border rounded-lg p-6 hover:shadow-lg transition-all cursor-pointer ${
+      <div className={`border rounded-lg p-6 hover:shadow-lg transition-all cursor-pointer relative ${
         isPast ? 'bg-gray-50 border-gray-200' : 'bg-white border-gray-300'
-      }`}>
+      } ${isReadyToDraw ? 'ring-2 ring-orange-400 ring-opacity-75' : ''}`}>
+        
+        {/* Ready to Draw Notification Badge */}
+        {isReadyToDraw && (
+          <div className="absolute -top-2 -right-2 z-10">
+            <div className="bg-orange-500 text-white px-3 py-1 rounded-full text-xs font-bold flex items-center shadow-lg animate-pulse">
+              <span className="w-2 h-2 bg-white rounded-full mr-2 animate-ping"></span>
+              READY TO DRAW!
+            </div>
+          </div>
+        )}
+
         <div className="flex justify-between items-start mb-4">
           <div>
             <h3 className="text-lg font-semibold">{getModeName(mode)}</h3>
             <p className="text-sm text-gray-500">by {creator.slice(0, 6)}...{creator.slice(-4)}</p>
           </div>
           <span className={`px-3 py-1 rounded-full text-sm font-medium ${
+            isReadyToDraw ? 'bg-orange-100 text-orange-800' :
             isActive ? 'bg-green-100 text-green-800' : 
             status === LotteryStatus.Closed ? 'bg-yellow-100 text-yellow-800' :
             status === LotteryStatus.PaidOut ? 'bg-purple-100 text-purple-800' :
             'bg-gray-100 text-gray-800'
           }`}>
-            {getStatusName(status)}
+            {isReadyToDraw ? 'Ready to Draw' : getStatusName(status)}
           </span>
         </div>
 
@@ -330,10 +343,83 @@ function LotteryCard({ address }: { address: string }) {
   );
 }
 
+// Component to check if a lottery is ready to draw
+function ReadyToDrawChecker({ address, onReadyStatusChange }: { 
+  address: string; 
+  onReadyStatusChange: (address: string, isReady: boolean) => void 
+}) {
+  const { data: lotteryInfo } = useReadContract({
+    address: address as `0x${string}`,
+    abi: LotteryAbi,
+    functionName: 'getLotteryInfo',
+  });
+
+  // Check if this lottery is ready to draw
+  if (lotteryInfo && Array.isArray(lotteryInfo)) {
+    const [,,,drawTimestamp,,,status] = lotteryInfo;
+    const now = Math.floor(Date.now() / 1000);
+    const timeLeft = Number(drawTimestamp) - now;
+    const isReadyToDraw = status === LotteryStatus.Open && timeLeft <= 0;
+    
+    // Notify parent component
+    onReadyStatusChange(address, isReadyToDraw);
+  }
+
+  return null; // This component doesn't render anything
+}
+
+// Notification banner for ready to draw lotteries
+function ReadyToDrawNotification({ readyCount, readyAddresses }: { 
+  readyCount: number; 
+  readyAddresses: string[] 
+}) {
+  if (readyCount === 0) return null;
+
+  return (
+    <div className="bg-orange-50 border border-orange-200 rounded-lg p-4 mb-6">
+      <div className="flex items-center">
+        <div className="flex-shrink-0">
+          <div className="h-6 w-6 text-orange-400 flex items-center justify-center text-lg">
+            🎯
+          </div>
+        </div>
+        <div className="ml-3 flex-1">
+          <h3 className="text-lg font-medium text-orange-800">
+            {readyCount} {readyCount === 1 ? 'Lottery' : 'Lotteries'} Ready to Draw!
+          </h3>
+          <p className="text-sm text-orange-700 mt-1">
+            {readyCount === 1 
+              ? 'A lottery has reached its draw time and is ready for execution.'
+              : `${readyCount} lotteries have reached their draw times and are ready for execution.`
+            }
+          </p>
+          <div className="mt-2 flex flex-wrap gap-2">
+            {readyAddresses.slice(0, 3).map((addr) => (
+              <Link 
+                key={addr}
+                href={`/lottery/${addr}`}
+                className="inline-flex items-center px-3 py-1 rounded-full text-xs font-medium bg-orange-100 text-orange-800 hover:bg-orange-200 transition-colors"
+              >
+                {addr.slice(0, 6)}...{addr.slice(-4)}
+              </Link>
+            ))}
+            {readyAddresses.length > 3 && (
+              <span className="inline-flex items-center px-3 py-1 rounded-full text-xs font-medium bg-orange-100 text-orange-800">
+                +{readyAddresses.length - 3} more
+              </span>
+            )}
+          </div>
+        </div>
+      </div>
+    </div>
+  );
+}
+
 export default function HomePage() {
   const { address, isConnected, chain } = useAccount();
   const [showCreateModal, setShowCreateModal] = useState(false);
   const [filterStatus, setFilterStatus] = useState<'all' | 'active' | 'past'>('active');
+  const [readyLotteries, setReadyLotteries] = useState<string[]>([]);
 
   const { data: allLotteries, isLoading, refetch } = useReadContract({
     address: LOTTERY_FACTORY_ADDRESS,
@@ -373,6 +459,21 @@ export default function HomePage() {
   } else if (!isLoading) {
     console.log('No lotteries found. Chain:', chain?.name, 'Factory:', LOTTERY_FACTORY_ADDRESS);
   }
+
+  // Handle ready lottery tracking
+  const handleReadyStatusChange = (address: string, isReady: boolean) => {
+    setReadyLotteries(prev => {
+      if (isReady && !prev.includes(address)) {
+        return [...prev, address];
+      } else if (!isReady && prev.includes(address)) {
+        return prev.filter(addr => addr !== address);
+      }
+      return prev;
+    });
+  };
+
+  const readyCount = readyLotteries.length;
+  const readyAddresses = readyLotteries;
 
   return (
     <div className="min-h-screen bg-gray-50">
@@ -454,6 +555,9 @@ export default function HomePage() {
           </div>
         </div>
 
+        {/* Ready to Draw Notification */}
+        <ReadyToDrawNotification readyCount={readyCount} readyAddresses={readyAddresses} />
+
         {/* Lottery Grid */}
         {isLoading ? (
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
@@ -471,7 +575,13 @@ export default function HomePage() {
         ) : displayedLotteries && displayedLotteries.length > 0 ? (
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
             {[...displayedLotteries].reverse().map((lotteryAddress) => (
-              <LotteryCard key={lotteryAddress} address={lotteryAddress} />
+              <div key={lotteryAddress}>
+                <LotteryCard address={lotteryAddress} />
+                <ReadyToDrawChecker 
+                  address={lotteryAddress} 
+                  onReadyStatusChange={handleReadyStatusChange} 
+                />
+              </div>
             ))}
           </div>
         ) : (
