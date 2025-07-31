@@ -134,6 +134,41 @@ export default function LotteryDetailPage() {
   const { isLoading: isClaimPending } = useWaitForTransactionReceipt({ hash: claimHash });
   const { isLoading: isLastMinterPending } = useWaitForTransactionReceipt({ hash: lastMinterHash });
 
+  // ALL useEffect CALLS MUST BE HERE - BEFORE any early returns
+  // Watch for approval success
+  useEffect(() => {
+    if (approveHash && !isApprovePending && isApproving && lotteryInfo) {
+      setIsApproving(false);
+      const [,,,,,mode] = lotteryInfo;
+      // Now buy tickets
+      if (mode === LotteryMode.TeamBased) {
+        buyTickets({
+          address: lotteryAddress as `0x${string}`,
+          abi: LotteryAbi,
+          functionName: 'buyTicketsForTeam',
+          args: [BigInt(ticketCount), BigInt(teamId)],
+          chainId: baseSepolia.id, // Explicitly specify chain
+        });
+      } else {
+        buyTickets({
+          address: lotteryAddress as `0x${string}`,
+          abi: LotteryAbi,
+          functionName: 'buyTickets',
+          args: [BigInt(ticketCount)],
+          chainId: baseSepolia.id, // Explicitly specify chain
+        });
+      }
+    }
+  }, [approveHash, isApprovePending, isApproving, lotteryInfo, ticketCount, teamId, buyTickets, lotteryAddress]);
+
+  // Refetch after buy
+  useEffect(() => {
+    if (buyHash && !isBuyPending) {
+      refetchInfo();
+    }
+  }, [buyHash, isBuyPending, refetchInfo]);
+
+  // NOW we can have early returns after all hooks
   if (!lotteryInfo) return <div>Loading...</div>;
 
   const [creator, initialStake, ticketPrice, drawTimestamp, totalPot, mode, status, playerCount] = lotteryInfo;
@@ -232,38 +267,6 @@ export default function LotteryDetailPage() {
       setIsApproving(false);
     }
   };
-
-  // Watch for approval success
-  useEffect(() => {
-    if (approveHash && !isApprovePending && isApproving) {
-      setIsApproving(false);
-      // Now buy tickets
-      if (mode === LotteryMode.TeamBased) {
-        buyTickets({
-          address: lotteryAddress as `0x${string}`,
-          abi: LotteryAbi,
-          functionName: 'buyTicketsForTeam',
-          args: [BigInt(ticketCount), BigInt(teamId)],
-          chainId: baseSepolia.id, // Explicitly specify chain
-        });
-      } else {
-        buyTickets({
-          address: lotteryAddress as `0x${string}`,
-          abi: LotteryAbi,
-          functionName: 'buyTickets',
-          args: [BigInt(ticketCount)],
-          chainId: baseSepolia.id, // Explicitly specify chain
-        });
-      }
-    }
-  }, [approveHash, isApprovePending, isApproving]);
-
-  // Refetch after buy
-  useEffect(() => {
-    if (buyHash && !isBuyPending) {
-      refetchInfo();
-    }
-  }, [buyHash, isBuyPending]);
 
   return (
     <div className="min-h-screen bg-gray-50">
