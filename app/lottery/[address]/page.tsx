@@ -3,21 +3,34 @@
 import { useParams } from 'next/navigation';
 import { ConnectWallet, Wallet, WalletDropdown, WalletDropdownDisconnect } from "@coinbase/onchainkit/wallet";
 import { Address, Avatar, EthBalance, Identity, Name } from "@coinbase/onchainkit/identity";
-import { useAccount, useReadContract, useWriteContract, useWaitForTransactionReceipt } from "wagmi";
+import { useAccount, useReadContract, useWriteContract, useWaitForTransactionReceipt, useSwitchChain } from "wagmi";
 import { useState, useEffect } from "react";
 import { formatEther, parseEther } from "viem";
+import { baseSepolia } from "wagmi/chains";
 import { LotteryAbi, LotteryMode, LotteryStatus, getModeName, getStatusName } from "../../lib/Lottery";
 import { LEITokenAbi, leiTokenContract } from "../../lib/LEIToken";
 import Link from "next/link";
 
+// Helper function to format LEI with proper precision
+const formatLEI = (amount: bigint, precision: number = 6): string => {
+  const formatted = formatEther(amount);
+  const num = parseFloat(formatted);
+  return num.toFixed(precision).replace(/\.?0+$/, '');
+};
+
 export default function LotteryDetailPage() {
   const params = useParams();
   const lotteryAddress = params.address as string;
-  const { address: userAddress } = useAccount();
+  const { address: userAddress, chain } = useAccount();
+  const { switchChain } = useSwitchChain();
   
   const [ticketCount, setTicketCount] = useState("1");
   const [teamId, setTeamId] = useState("0");
   const [isApproving, setIsApproving] = useState(false);
+
+  // Check if user is on correct network
+  const isOnCorrectNetwork = chain?.id === baseSepolia.id;
+  const canInteract = userAddress && isOnCorrectNetwork;
 
   // Read lottery info
   const { data: lotteryInfo, refetch: refetchInfo } = useReadContract({
@@ -114,12 +127,51 @@ export default function LotteryDetailPage() {
     lastMinter && 
     lastMinterTimeLeft > 300; // 5 minutes
 
+  const handleSwitchNetwork = async () => {
+    try {
+      await switchChain({ chainId: baseSepolia.id });
+    } catch (error) {
+      console.error('Failed to switch network:', error);
+      alert('Failed to switch to Base Sepolia. Please switch manually in your wallet.');
+    }
+  };
+
+  const handleExecuteDraw = async () => {
+    if (!userAddress) return;
+
+    // Ensure we're on the correct network
+    if (!isOnCorrectNetwork) {
+      await handleSwitchNetwork();
+      return;
+    }
+
+    try {
+      console.log('Executing draw for lottery:', lotteryAddress, 'on chain:', chain?.name);
+      await executeDraw({
+        address: lotteryAddress as `0x${string}`,
+        abi: LotteryAbi,
+        functionName: 'executeDraw',
+        chainId: baseSepolia.id, // Explicitly specify chain
+      });
+    } catch (error) {
+      console.error('Execute draw error:', error);
+      alert('Failed to execute draw. Please ensure you are on Base Sepolia network and try again.');
+    }
+  };
+
   const handleBuyTickets = async () => {
     if (!userAddress || !ticketCount) return;
+
+    // Ensure we're on the correct network
+    if (!isOnCorrectNetwork) {
+      await handleSwitchNetwork();
+      return;
+    }
 
     try {
       const totalCost = BigInt(ticketCount) * ticketPrice;
       
+      console.log('Buying tickets on chain:', chain?.name);
       // First approve
       setIsApproving(true);
       await approve({
@@ -127,6 +179,7 @@ export default function LotteryDetailPage() {
         abi: LEITokenAbi,
         functionName: 'approve',
         args: [lotteryAddress as `0x${string}`, totalCost],
+        chainId: baseSepolia.id, // Explicitly specify chain
       });
     } catch (error) {
       console.error('Approval error:', error);
@@ -145,6 +198,7 @@ export default function LotteryDetailPage() {
           abi: LotteryAbi,
           functionName: 'buyTicketsForTeam',
           args: [BigInt(ticketCount), BigInt(teamId)],
+          chainId: baseSepolia.id, // Explicitly specify chain
         });
       } else {
         buyTickets({
@@ -152,6 +206,7 @@ export default function LotteryDetailPage() {
           abi: LotteryAbi,
           functionName: 'buyTickets',
           args: [BigInt(ticketCount)],
+          chainId: baseSepolia.id, // Explicitly specify chain
         });
       }
     }
@@ -167,11 +222,9 @@ export default function LotteryDetailPage() {
   return (
     <div className="min-h-screen bg-gray-50">
       {/* Header */}
-      <header className="bg-white border-b">
-        <div className="max-w-7xl mx-auto px-4 py-4 flex justify-between items-center">
-          <Link href="/" className="text-2xl font-bold hover:text-blue-600">
-            LEI Lottery Hub
-          </Link>
+      <div className="bg-white border-b">
+        <div className="max-w-4xl mx-auto px-4 py-4 flex justify-between items-center">
+          <h1 className="text-2xl font-bold">Lottery Details</h1>
           <Wallet>
             <ConnectWallet>
               <Avatar className="h-6 w-6" />
@@ -188,10 +241,27 @@ export default function LotteryDetailPage() {
             </WalletDropdown>
           </Wallet>
         </div>
-      </header>
+      </div>
 
-      {/* Main Content */}
-      <main className="max-w-7xl mx-auto px-4 py-8">
+      {/* Network Warning */}
+      {userAddress && !isOnCorrectNetwork && (
+        <div className="bg-red-100 border border-red-400 text-red-700 px-4 py-3 mx-4 mt-4 rounded">
+          <div className="flex justify-between items-center">
+            <div>
+              <strong>Wrong Network!</strong> You're on {chain?.name || 'unknown network'}. 
+              Please switch to Base Sepolia to interact with this lottery.
+            </div>
+            <button
+              onClick={handleSwitchNetwork}
+              className="bg-red-500 text-white px-4 py-2 rounded hover:bg-red-600"
+            >
+              Switch to Base Sepolia
+            </button>
+          </div>
+        </div>
+      )}
+
+      <div className="max-w-4xl mx-auto px-4 py-8">
         <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
           {/* Lottery Info */}
           <div className="lg:col-span-2 space-y-6">
@@ -213,11 +283,17 @@ export default function LotteryDetailPage() {
               <div className="grid grid-cols-2 gap-4">
                 <div className="bg-gray-50 p-4 rounded">
                   <p className="text-sm text-gray-600">Prize Pool</p>
-                  <p className="text-2xl font-bold">{formatEther(totalPot)} LEI</p>
+                  <p className="text-2xl font-bold">{formatLEI(totalPot)} LEI</p>
+                  <p className="text-xs text-gray-500">
+                    {totalPot.toString()} wei (18 decimals)
+                  </p>
                 </div>
                 <div className="bg-gray-50 p-4 rounded">
                   <p className="text-sm text-gray-600">Ticket Price</p>
-                  <p className="text-2xl font-bold">{formatEther(ticketPrice)} LEI</p>
+                  <p className="text-2xl font-bold">{formatLEI(ticketPrice)} LEI</p>
+                  <p className="text-xs text-gray-500">
+                    {ticketPrice.toString()} wei (18 decimals)
+                  </p>
                 </div>
                 <div className="bg-gray-50 p-4 rounded">
                   <p className="text-sm text-gray-600">Players</p>
@@ -251,7 +327,7 @@ export default function LotteryDetailPage() {
             </div>
 
             {/* Buy Tickets */}
-            {isActive && userAddress && (
+            {isActive && canInteract && (
               <div className="bg-white rounded-lg p-6 shadow">
                 <h2 className="text-xl font-bold mb-4">Buy Tickets</h2>
                 
@@ -290,7 +366,13 @@ export default function LotteryDetailPage() {
 
                   <div className="pt-2">
                     <p className="text-sm text-gray-600 mb-2">
-                      Total Cost: {formatEther(BigInt(ticketCount || 0) * ticketPrice)} LEI
+                      Total Cost: {formatLEI(BigInt(ticketCount || 0) * ticketPrice)} LEI
+                    </p>
+                    <p className="text-xs text-gray-500 mb-1">
+                      Wei amount: {(BigInt(ticketCount || 0) * ticketPrice).toString()}
+                    </p>
+                    <p className="text-xs text-gray-500 mb-3">
+                      LEI uses 18 decimals like ETH. Precise amounts supported (e.g., 5.50 LEI).
                     </p>
                     <button
                       onClick={handleBuyTickets}
@@ -305,7 +387,7 @@ export default function LotteryDetailPage() {
             )}
 
             {/* Admin Actions */}
-            {userAddress && (
+            {canInteract && (
               <>
                 {canDraw && (
                   <div className="bg-white rounded-lg p-6 shadow">
@@ -314,11 +396,7 @@ export default function LotteryDetailPage() {
                       The draw time has passed. Anyone can execute the draw.
                     </p>
                     <button
-                      onClick={() => executeDraw({
-                        address: lotteryAddress as `0x${string}`,
-                        abi: LotteryAbi,
-                        functionName: 'executeDraw',
-                      })}
+                      onClick={handleExecuteDraw}
                       disabled={isDrawPending}
                       className="w-full px-4 py-2 bg-green-500 text-white rounded-lg hover:bg-green-600 disabled:bg-gray-300"
                     >
@@ -338,6 +416,7 @@ export default function LotteryDetailPage() {
                         address: lotteryAddress as `0x${string}`,
                         abi: LotteryAbi,
                         functionName: 'claimLastMinterWin',
+                        chainId: baseSepolia.id,
                       })}
                       disabled={isLastMinterPending}
                       className="w-full px-4 py-2 bg-green-500 text-white rounded-lg hover:bg-green-600 disabled:bg-gray-300"
@@ -350,14 +429,18 @@ export default function LotteryDetailPage() {
                 {userPrize && userPrize > BigInt(0) && status === LotteryStatus.PaidOut && (
                   <div className="bg-white rounded-lg p-6 shadow">
                     <h2 className="text-xl font-bold mb-4">Your Prize</h2>
-                    <p className="text-2xl font-bold text-green-600 mb-4">
-                      {formatEther(userPrize)} LEI
+                    <p className="text-2xl font-bold text-green-600 mb-2">
+                      {formatLEI(userPrize)} LEI
+                    </p>
+                    <p className="text-xs text-gray-500 mb-4">
+                      Wei amount: {userPrize.toString()} (18 decimal precision)
                     </p>
                     <button
                       onClick={() => claimPrize({
                         address: lotteryAddress as `0x${string}`,
                         abi: LotteryAbi,
                         functionName: 'claimPrize',
+                        chainId: baseSepolia.id,
                       })}
                       disabled={isClaimPending}
                       className="w-full px-4 py-2 bg-green-500 text-white rounded-lg hover:bg-green-600 disabled:bg-gray-300"
@@ -375,6 +458,7 @@ export default function LotteryDetailPage() {
                         address: lotteryAddress as `0x${string}`,
                         abi: LotteryAbi,
                         functionName: 'claimCreatorStake',
+                        chainId: baseSepolia.id,
                       })}
                       className="w-full px-4 py-2 bg-blue-500 text-white rounded-lg hover:bg-blue-600"
                     >
@@ -389,7 +473,7 @@ export default function LotteryDetailPage() {
           {/* Sidebar */}
           <div className="space-y-6">
             {/* Your Stats */}
-                         {userAddress && userTickets && userTickets > BigInt(0) && (
+            {userAddress && userTickets && userTickets > BigInt(0) && (
               <div className="bg-white rounded-lg p-6 shadow">
                 <h3 className="text-lg font-bold mb-4">Your Stats</h3>
                 <div className="space-y-2">
@@ -461,7 +545,7 @@ export default function LotteryDetailPage() {
             )}
           </div>
         </div>
-      </main>
+      </div>
     </div>
   );
-} 
+}

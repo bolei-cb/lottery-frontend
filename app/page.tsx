@@ -86,28 +86,48 @@ function CreateLotteryModal({ isOpen, onClose, onSuccess }: { isOpen: boolean; o
         
         <div className="space-y-4">
           <div>
-            <label className="block text-sm font-medium mb-2">Initial Stake (LEI)</label>
+            <label className="block text-sm font-medium mb-2">
+              Initial Stake (LEI)
+            </label>
             <input
               type="number"
               value={initialStake}
               onChange={(e) => setInitialStake(e.target.value)}
-              className="w-full px-3 py-2 border rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
+              className="w-full px-3 py-2 border rounded-lg"
               min="100"
-              step="10"
+              step="0.01"
+              placeholder="100.00"
             />
-            <p className="text-xs text-gray-500 mt-1">Minimum: 100 LEI</p>
+            <p className="text-xs text-gray-500 mt-1">
+              Minimum: 100 LEI (uses 18 decimal places like ETH)
+            </p>
           </div>
 
           <div>
-            <label className="block text-sm font-medium mb-2">Ticket Price (LEI)</label>
+            <label className="block text-sm font-medium mb-2">
+              Ticket Price (LEI)
+            </label>
             <input
               type="number"
               value={ticketPrice}
               onChange={(e) => setTicketPrice(e.target.value)}
-              className="w-full px-3 py-2 border rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
-              min="0.1"
-              step="0.1"
+              className="w-full px-3 py-2 border rounded-lg"
+              min="0.01"
+              step="0.01"
+              placeholder="5.00"
             />
+            <p className="text-xs text-gray-500 mt-1">
+              Price per ticket (can use decimals like 5.50)
+            </p>
+          </div>
+
+          {/* LEI Token Info */}
+          <div className="bg-blue-50 p-3 rounded-lg">
+            <h4 className="text-sm font-medium text-blue-800 mb-1">💡 LEI Token Info</h4>
+            <p className="text-xs text-blue-700">
+              LEI uses 18 decimal places (like ETH). When you enter "100", the contract receives 100,000,000,000,000,000,000 wei.
+              This allows for precise fractional amounts like 5.50 or 0.01 LEI.
+            </p>
           </div>
 
           <div>
