@@ -44,7 +44,10 @@ export default function LotteryDetailPage() {
     address: lotteryAddress as `0x${string}`,
     abi: LotteryAbi,
     functionName: 'ticketCounts',
-    args: userAddress ? [userAddress] : undefined,
+    args: [userAddress || '0x0000000000000000000000000000000000000000'],
+    query: {
+      enabled: !!userAddress,
+    },
   });
 
   // Read user team
@@ -52,7 +55,10 @@ export default function LotteryDetailPage() {
     address: lotteryAddress as `0x${string}`,
     abi: LotteryAbi,
     functionName: 'playerTeam',
-    args: userAddress ? [userAddress] : undefined,
+    args: [userAddress || '0x0000000000000000000000000000000000000000'],
+    query: {
+      enabled: !!userAddress,
+    },
   });
 
   // Read players
@@ -81,7 +87,10 @@ export default function LotteryDetailPage() {
     address: lotteryAddress as `0x${string}`,
     abi: LotteryAbi,
     functionName: 'winnerPrizes',
-    args: userAddress ? [userAddress] : undefined,
+    args: [userAddress || '0x0000000000000000000000000000000000000000'],
+    query: {
+      enabled: !!userAddress,
+    },
   });
 
   // Last minter specific
@@ -102,7 +111,13 @@ export default function LotteryDetailPage() {
     address: leiTokenContract,
     abi: LEITokenAbi,
     functionName: 'allowance',
-    args: userAddress ? [userAddress, lotteryAddress as `0x${string}`] : undefined,
+    args: [
+      userAddress || '0x0000000000000000000000000000000000000000', 
+      lotteryAddress as `0x${string}`
+    ],
+    query: {
+      enabled: !!userAddress,
+    },
   });
 
   // Write functions

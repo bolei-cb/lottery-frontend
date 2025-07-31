@@ -192,8 +192,38 @@ function CreateLotteryModal({ isOpen, onClose, onSuccess }: { isOpen: boolean; o
 }
 
 function LotteryCard({ address }: { address: string }) {
-  // Validate address
+  // ALL HOOKS MUST BE CALLED FIRST - before any conditional logic or early returns
   const isValidAddress = address && address.length === 42 && address.startsWith('0x');
+  
+  const { data: lotteryInfo, isLoading, error } = useReadContract({
+    address: address as `0x${string}`,
+    abi: LotteryAbi,
+    functionName: 'getLotteryInfo',
+    query: {
+      enabled: Boolean(isValidAddress),
+    },
+  });
+
+  // Also try reading a simple value to test connectivity
+  const { data: creatorTest } = useReadContract({
+    address: address as `0x${string}`,
+    abi: LotteryAbi,
+    functionName: 'creator',
+    query: {
+      enabled: Boolean(isValidAddress),
+    },
+  });
+
+  const { data: statusTest } = useReadContract({
+    address: address as `0x${string}`,
+    abi: LotteryAbi,
+    functionName: 'status',
+    query: {
+      enabled: Boolean(isValidAddress),
+    },
+  });
+
+  // NOW we can do conditional logic and early returns AFTER all hooks
   if (!isValidAddress) {
     console.error('Invalid address format:', address);
     return (
@@ -204,25 +234,6 @@ function LotteryCard({ address }: { address: string }) {
     );
   }
   
-  const { data: lotteryInfo, isLoading, error } = useReadContract({
-    address: address as `0x${string}`,
-    abi: LotteryAbi,
-    functionName: 'getLotteryInfo',
-  });
-
-  // Also try reading a simple value to test connectivity
-  const { data: creatorTest } = useReadContract({
-    address: address as `0x${string}`,
-    abi: LotteryAbi,
-    functionName: 'creator',
-  });
-
-  const { data: statusTest } = useReadContract({
-    address: address as `0x${string}`,
-    abi: LotteryAbi,
-    functionName: 'status',
-  });
-
   // Log key data for debugging
   if (error) {
     console.error('Error reading lottery at', address, ':', error);
@@ -288,19 +299,31 @@ function LotteryCard({ address }: { address: string }) {
 
   return (
     <Link href={`/lottery/${address}`}>
-      <div className={`border rounded-lg p-6 hover:shadow-lg transition-all cursor-pointer ${
-        isPast ? 'bg-gray-50 border-gray-200' : 'bg-white border-gray-300'
-      }`}>
+      <div className={`border rounded-lg p-6 hover:shadow-lg transition-all cursor-pointer relative ${
+        isPast ? 'bg-gray-50 dark:bg-gray-800 border-gray-200 dark:border-gray-700' : 'bg-white dark:bg-gray-800 border-gray-300 dark:border-gray-600'
+      } ${isReadyToDraw ? 'ring-2 ring-orange-400 ring-opacity-75' : ''}`}>
+        
+        {/* Ready to Draw Notification Badge */}
+        {isReadyToDraw && (
+          <div className="absolute -top-2 -right-2 z-10">
+            <div className="bg-orange-500 text-white px-3 py-1 rounded-full text-xs font-bold flex items-center shadow-lg animate-pulse">
+              <span className="w-2 h-2 bg-white rounded-full mr-2 animate-ping"></span>
+              READY TO DRAW!
+            </div>
+          </div>
+        )}
+
         <div className="flex justify-between items-start mb-4">
           <div>
             <h3 className="text-lg font-semibold text-gray-900 dark:text-white">{getModeName(mode)}</h3>
             <p className="text-sm text-gray-500 dark:text-gray-400">by {creator.slice(0, 6)}...{creator.slice(-4)}</p>
           </div>
           <span className={`px-3 py-1 rounded-full text-sm font-medium ${
-            isActive ? 'bg-green-100 text-green-800' : 
-            status === LotteryStatus.Closed ? 'bg-yellow-100 text-yellow-800' :
-            status === LotteryStatus.PaidOut ? 'bg-purple-100 text-purple-800' :
-            'bg-gray-100 text-gray-800'
+            isReadyToDraw ? 'bg-orange-100 text-orange-800 dark:bg-orange-900/30 dark:text-orange-300' :
+            isActive ? 'bg-green-100 text-green-800 dark:bg-green-900/30 dark:text-green-300' : 
+            status === LotteryStatus.Closed ? 'bg-yellow-100 text-yellow-800 dark:bg-yellow-900/30 dark:text-yellow-300' :
+            status === LotteryStatus.PaidOut ? 'bg-purple-100 text-purple-800 dark:bg-purple-900/30 dark:text-purple-300' :
+            'bg-gray-100 text-gray-800 dark:bg-gray-700 dark:text-gray-300'
           }`}>
             {isReadyToDraw ? 'Ready to Draw' : getStatusName(status)}
           </span>
@@ -347,16 +370,18 @@ function ReadyToDrawChecker({ address, onReadyStatusChange }: {
     functionName: 'getLotteryInfo',
   });
 
-  // Check if this lottery is ready to draw
-  if (lotteryInfo && Array.isArray(lotteryInfo)) {
-    const [,,,drawTimestamp,,,status] = lotteryInfo;
-    const now = Math.floor(Date.now() / 1000);
-    const timeLeft = Number(drawTimestamp) - now;
-    const isReadyToDraw = status === LotteryStatus.Open && timeLeft <= 0;
-    
-    // Notify parent component
-    onReadyStatusChange(address, isReadyToDraw);
-  }
+  // Use useEffect to handle the side effect instead of calling during render
+  useEffect(() => {
+    if (lotteryInfo && Array.isArray(lotteryInfo)) {
+      const [,,,drawTimestamp,,,status] = lotteryInfo;
+      const now = Math.floor(Date.now() / 1000);
+      const timeLeft = Number(drawTimestamp) - now;
+      const isReadyToDraw = status === LotteryStatus.Open && timeLeft <= 0;
+      
+      // Notify parent component
+      onReadyStatusChange(address, isReadyToDraw);
+    }
+  }, [lotteryInfo, address, onReadyStatusChange]);
 
   return null; // This component doesn't render anything
 }
@@ -425,7 +450,10 @@ export default function HomePage() {
     address: leiTokenContract,
     abi: LEITokenAbi,
     functionName: 'balanceOf',
-    args: address ? [address] : undefined,
+    args: [address || '0x0000000000000000000000000000000000000000'],
+    query: {
+      enabled: !!address,
+    },
   });
 
   const { data: allLotteries, isLoading, refetch } = useReadContract({
