@@ -13,7 +13,7 @@ const wagmiConfig = createConfig({
     coinbaseWallet({ appName: 'LEI Lottery Hub' }),
   ],
   transports: {
-    [baseSepolia.id]: http(),
+    [baseSepolia.id]: http('https://sepolia.base.org'),
   },
 });
 
@@ -24,7 +24,7 @@ export function Providers(props: { children: ReactNode }) {
     <WagmiProvider config={wagmiConfig}>
       <QueryClientProvider client={queryClient}>
         <OnchainKitProvider
-          apiKey={process.env.NEXT_PUBLIC_ONCHAINKIT_API_KEY}
+          apiKey={process.env.NEXT_PUBLIC_ONCHAINKIT_API_KEY || undefined}
           chain={baseSepolia}
           config={{ 
             appearance: { 
