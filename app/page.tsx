@@ -15,8 +15,12 @@ function CreateLotteryModal({ isOpen, onClose, onSuccess }: { isOpen: boolean; o
   const { address } = useAccount();
   const [initialStake, setInitialStake] = useState("100");
   const [ticketPrice, setTicketPrice] = useState("5");
-  const [drawDate, setDrawDate] = useState("");
-  const [drawTime, setDrawTime] = useState("");
+  
+  // Default to 5 minutes from now
+  const defaultDateTime = new Date(Date.now() + 5 * 60 * 1000);
+  const [drawDate, setDrawDate] = useState(defaultDateTime.toISOString().split('T')[0]);
+  const [drawTime, setDrawTime] = useState(defaultDateTime.toTimeString().slice(0, 5));
+  
   const [mode, setMode] = useState(0);
   const [isApproving, setIsApproving] = useState(false);
 
