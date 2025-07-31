@@ -459,10 +459,10 @@ export default function LotteryDetailPage() {
                         functionName: 'claimPrize',
                         chainId: baseSepolia.id,
                       })}
-                      disabled={status === LotteryStatus.PaidOut}
+                      disabled={isClaimPending}
                       className="w-full px-4 py-2 bg-green-500 text-white rounded-lg hover:bg-green-600 disabled:bg-gray-300"
                     >
-                      {status == LotteryStatus.PaidOut ? 'You already claimed this prize' : 'Claim Prize'}
+                      {isClaimPending ? 'Claiming...' : 'Claim Prize'}
                     </button>
                   </div>
                 )}
