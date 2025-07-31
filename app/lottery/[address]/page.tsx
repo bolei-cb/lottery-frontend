@@ -27,6 +27,7 @@ export default function LotteryDetailPage() {
   const [ticketCount, setTicketCount] = useState("1");
   const [teamId, setTeamId] = useState("0");
   const [isApproving, setIsApproving] = useState(false);
+  const [pendingBuy, setPendingBuy] = useState(false);
 
   // Check if user is on correct network
   const isOnCorrectNetwork = chain?.id === baseSepolia.id;
@@ -40,7 +41,7 @@ export default function LotteryDetailPage() {
   });
 
   // Read user tickets
-  const { data: userTickets } = useReadContract({
+  const { data: userTickets, refetch: refetchUserTickets } = useReadContract({
     address: lotteryAddress as `0x${string}`,
     abi: LotteryAbi,
     functionName: 'ticketCounts',
@@ -107,7 +108,7 @@ export default function LotteryDetailPage() {
   });
 
   // Read token allowance
-  const { data: tokenAllowance } = useReadContract({
+  const { data: tokenAllowance, refetch: refetchAllowance } = useReadContract({
     address: leiTokenContract,
     abi: LEITokenAbi,
     functionName: 'allowance',
@@ -128,45 +129,74 @@ export default function LotteryDetailPage() {
   const { writeContract: claimLastMinter, data: lastMinterHash } = useWriteContract();
   const { writeContract: claimCreatorStake } = useWriteContract();
 
-  const { isLoading: isApprovePending } = useWaitForTransactionReceipt({ hash: approveHash });
-  const { isLoading: isBuyPending } = useWaitForTransactionReceipt({ hash: buyHash });
+  const { isLoading: isApprovePending, isSuccess: approveSuccess } = useWaitForTransactionReceipt({ hash: approveHash });
+  const { isLoading: isBuyPending, isSuccess: buySuccess } = useWaitForTransactionReceipt({ hash: buyHash });
   const { isLoading: isDrawPending } = useWaitForTransactionReceipt({ hash: drawHash });
   const { isLoading: isClaimPending } = useWaitForTransactionReceipt({ hash: claimHash });
   const { isLoading: isLastMinterPending } = useWaitForTransactionReceipt({ hash: lastMinterHash });
 
   // ALL useEffect CALLS MUST BE HERE - BEFORE any early returns
-  // Watch for approval success
+  // Watch for approval success and refetch allowance
   useEffect(() => {
-    if (approveHash && !isApprovePending && isApproving && lotteryInfo) {
-      setIsApproving(false);
-      const [,,,,,mode] = lotteryInfo;
-      // Now buy tickets
-      if (mode === LotteryMode.TeamBased) {
-        buyTickets({
-          address: lotteryAddress as `0x${string}`,
-          abi: LotteryAbi,
-          functionName: 'buyTicketsForTeam',
-          args: [BigInt(ticketCount), BigInt(teamId)],
-          chainId: baseSepolia.id, // Explicitly specify chain
+    if (approveHash && approveSuccess && isApproving) {
+      console.log('Approval successful, refetching allowance...');
+      // Wait a bit for blockchain to update then refetch allowance
+      const timer = setTimeout(() => {
+        refetchAllowance().then(() => {
+          console.log('Allowance refetched');
+          setIsApproving(false);
+          // Set flag to continue with buy
+          if (pendingBuy) {
+            setPendingBuy(false);
+            // The actual buy will happen in the next effect when allowance is updated
+          }
         });
-      } else {
-        buyTickets({
-          address: lotteryAddress as `0x${string}`,
-          abi: LotteryAbi,
-          functionName: 'buyTickets',
-          args: [BigInt(ticketCount)],
-          chainId: baseSepolia.id, // Explicitly specify chain
-        });
+      }, 1000); // Wait 1 second for blockchain state
+      
+      return () => clearTimeout(timer);
+    }
+  }, [approveHash, approveSuccess, isApproving, refetchAllowance, pendingBuy]);
+
+  // Automatically buy after allowance is confirmed
+  useEffect(() => {
+    if (!isApproving && tokenAllowance && lotteryInfo && ticketCount && pendingBuy) {
+      const totalCost = BigInt(ticketCount) * lotteryInfo[2]; // ticketPrice
+      
+      if (tokenAllowance >= totalCost) {
+        console.log('Sufficient allowance detected, proceeding with buy...');
+        setPendingBuy(false);
+        
+        const [,,,,,mode] = lotteryInfo;
+        if (mode === LotteryMode.TeamBased) {
+          buyTickets({
+            address: lotteryAddress as `0x${string}`,
+            abi: LotteryAbi,
+            functionName: 'buyTicketsForTeam',
+            args: [BigInt(ticketCount), BigInt(teamId)],
+            chainId: baseSepolia.id,
+          });
+        } else {
+          buyTickets({
+            address: lotteryAddress as `0x${string}`,
+            abi: LotteryAbi,
+            functionName: 'buyTickets',
+            args: [BigInt(ticketCount)],
+            chainId: baseSepolia.id,
+          });
+        }
       }
     }
-  }, [approveHash, isApprovePending, isApproving, lotteryInfo, ticketCount, teamId, buyTickets, lotteryAddress]);
+  }, [isApproving, tokenAllowance, lotteryInfo, ticketCount, pendingBuy, buyTickets, lotteryAddress, teamId]);
 
-  // Refetch after buy
+  // Refetch after buy success
   useEffect(() => {
-    if (buyHash && !isBuyPending) {
+    if (buyHash && buySuccess) {
+      console.log('Buy successful, refetching data...');
       refetchInfo();
+      refetchUserTickets();
+      refetchAllowance();
     }
-  }, [buyHash, isBuyPending, refetchInfo]);
+  }, [buyHash, buySuccess, refetchInfo, refetchUserTickets, refetchAllowance]);
 
   // NOW we can have early returns after all hooks
   if (!lotteryInfo) return <div>Loading...</div>;
@@ -230,20 +260,25 @@ export default function LotteryDetailPage() {
       const totalCost = BigInt(ticketCount) * ticketPrice;
       
       console.log('Buying tickets on chain:', chain?.name);
+      console.log('Total cost:', formatEther(totalCost), 'LEI');
+      console.log('Current allowance:', tokenAllowance ? formatEther(tokenAllowance) : '0', 'LEI');
       
       // Check if we need to approve
       if (!tokenAllowance || tokenAllowance < totalCost) {
         // First approve
+        console.log('Insufficient allowance, approving first...');
         setIsApproving(true);
+        setPendingBuy(true); // Set flag to continue with buy after approval
         await approve({
           address: leiTokenContract,
           abi: LEITokenAbi,
           functionName: 'approve',
           args: [lotteryAddress as `0x${string}`, totalCost],
-          chainId: baseSepolia.id, // Explicitly specify chain
+          chainId: baseSepolia.id,
         });
       } else {
         // We have enough allowance, buy directly
+        console.log('Sufficient allowance, buying directly...');
         if (mode === LotteryMode.TeamBased) {
           await buyTickets({
             address: lotteryAddress as `0x${string}`,
@@ -265,6 +300,7 @@ export default function LotteryDetailPage() {
     } catch (error) {
       console.error('Buy tickets error:', error);
       setIsApproving(false);
+      setPendingBuy(false);
     }
   };
 
@@ -461,10 +497,11 @@ export default function LotteryDetailPage() {
                     </p>
                     <button
                       onClick={handleBuyTickets}
-                      disabled={!ticketCount || isApprovePending || isBuyPending}
+                      disabled={!ticketCount || isApprovePending || isBuyPending || pendingBuy}
                       className="w-full px-4 py-2 bg-blue-500 text-white rounded-lg hover:bg-blue-600 disabled:bg-gray-300"
                     >
                       {isApprovePending ? 'Approving...' : 
+                       pendingBuy ? 'Processing...' :
                        isBuyPending ? 'Buying...' : 
                        (tokenAllowance && tokenAllowance >= BigInt(ticketCount || 0) * ticketPrice) ? 'Buy Tickets' : 
                        'Approve & Buy Tickets'}
